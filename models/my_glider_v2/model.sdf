@@ -707,39 +707,6 @@
           </friction>
         </surface>
       </collision>
-
-      <sensor name="imu_sensor" type="imu">
-        <always_on>true</always_on>
-        <update_rate>100</update_rate>
-        <topic>/model/my_glider_v2/imu</topic>
-        <imu>
-          <angular_velocity>
-            <x><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></x>
-            <y><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></y>
-            <z><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></z>
-          </angular_velocity>
-          <linear_acceleration>
-            <x><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></x>
-            <y><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></y>
-            <z><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></z>
-          </linear_acceleration>
-        </imu>
-      </sensor>
-
-      <sensor name="altimeter_sensor" type="altimeter">
-        <always_on>true</always_on>
-        <update_rate>10</update_rate>
-        <topic>/model/my_glider_v2/altimeter</topic>
-        <altimeter>
-          <vertical_position>
-            <noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise>
-          </vertical_position>
-          <vertical_velocity>
-            <noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise>
-          </vertical_velocity>
-        </altimeter>
-      </sensor>
-
     </link>
     <link name="fairing_1__wing_mirror_1">
       <pose relative_to="__model__">-0.5660031202255547 0.018970334758951844 6.328271240363394e-17 -1.5707963267948968 6.827871601444708e-15 -1.5707963267948966</pose>
@@ -4359,15 +4326,6 @@
           <izz>0.00005</izz>
         </inertia>
       </inertial>
-      <visual name="nose_ballast_visual">
-        <geometry>
-          <sphere><radius>0.03</radius></sphere>
-        </geometry>
-        <material>
-          <ambient>0.9 0.4 0.1 1</ambient>
-          <diffuse>0.9 0.4 0.1 1</diffuse>
-        </material>
-      </visual>
     </link>
     <joint name="fix__nose_ballast" type="fixed">
       <parent>fairing_1</parent>

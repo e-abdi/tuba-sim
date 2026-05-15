@@ -146,7 +146,9 @@
     </model>
 
     <!-- =====================================================
-         GLIDER — spawned 3 m below surface at z=17, physics active.
+         GLIDER — static for visual check (step 1).
+         Remove <static>true</static> for physics testing.
+         Spawned 3 m below surface at z=17.
          ===================================================== -->
     <include>
       <pose>0 0 17 0 0 0</pose>
