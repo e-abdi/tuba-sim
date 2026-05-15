@@ -1,0 +1,64 @@
+# physics_params.yaml — TUBA glider hydrodynamics and control parameters
+# Edit these values and restart gz sim to tune the physics.
+# Hull geometry: L=1.8 m, R=0.105 m, rho_water=1025 kg/m³
+
+hydrodynamics:
+  # Fossen (1994) added mass — diagonal of M_A matrix (kg, kg·m²)
+  # Negative values are convention; the plugin negates internally.
+  xDotU: -2.0      # surge added mass        (streamlined bow, ~5% displaced)
+  yDotV: -40.0     # sway added mass         (slender body: pi*rho*R^2*L reduced)
+  zDotW: -40.0     # heave added mass        (axisymmetric hull, = yDotV)
+  kDotP: 0.0       # roll added inertia      (negligible, torpedo symmetric)
+  mDotQ: -4.0      # pitch added inertia     (kg·m²)
+  nDotR: -4.0      # yaw added inertia       (kg·m²)
+
+  # Linear drag (small; quadratic terms dominate at glider speeds <1 m/s)
+  xU: 0.0
+  yV: 0.0
+  zW: 0.0
+  kP: 0.0
+  mQ: 0.0
+  nR: 0.0
+
+  # Quadratic drag (dominant at glider operating speeds)
+  xUabsU: -3.0     # axial drag              (0.5*rho*Cd_axial*pi*R^2)
+  yVabsV: -150.0   # sway drag               (0.5*rho*Cd_cf*D*L)
+  zWabsW: -150.0   # heave drag              (= sway, axisymmetric)
+  kPabsP: -0.5     # roll damping
+  mQabsQ: -25.0    # pitch damping
+  nRabsR: -25.0    # yaw damping
+
+buoyancy_engine:
+  neutral_volume: 0.002      # m³ — net force = 0 at this volume
+  min_volume: 0.001          # m³ — max negative buoyancy (~-10 N)
+  max_volume: 0.003          # m³ — max positive buoyancy (~+10 N)
+  max_inflation_rate: 0.0001 # m³/s — 0.6 L/min (realistic piston pump)
+  fluid_density: 1025        # kg/m³
+
+mass_shifter:
+  p_gain: 15.0
+  i_gain: 0.5
+  d_gain: 2.0
+  i_max: 5.0
+  i_min: -5.0
+  cmd_max: 10.0
+  cmd_min: -10.0
+  travel_limit: 0.15         # m — ±15 cm from CG
+
+wings:
+  span: 0.40                 # m per wing
+  chord: 0.08                # m
+  area_per_wing: 0.032       # m² = span * chord
+  cla: 4.0                   # lift curve slope (1/rad)
+  cda: 0.08                  # profile drag coefficient at zero lift
+  cla_stall: -0.5            # post-stall lift slope
+  cda_stall: 0.5             # post-stall drag
+  alpha_stall_rad: 0.17      # ~10° stall angle
+
+# Target performance (used to evaluate tuning)
+target_performance:
+  glide_angle_deg: 25        # desired glide slope angle from horizontal
+  horizontal_speed_ms: 0.25  # target forward speed during steady glide
+  vertical_speed_ms: 0.12    # target vertical speed
+  max_roll_deg: 5.0          # roll stability threshold
+  min_horizontal_per_cycle_m: 50.0  # minimum forward distance per dive+ascend

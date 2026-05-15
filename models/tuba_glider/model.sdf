@@ -1,0 +1,449 @@
+<?xml version="1.0" ?>
+<!--
+  model.sdf — TUBA underwater glider model for gz-sim 10.2.0
+  SDF version 1.6
+
+  Coordinate frame convention:
+    X = forward (nose direction)
+    Y = port (left)
+    Z = up
+
+  Physical layout (placeholder dims; replace with real CAD measurements):
+    Hull : cylinder, radius 0.105 m, length 1.8 m, long axis along X
+    Wings: symmetric NACA-0009 approximation, 0.40 m span, 0.08 m chord
+    Tail : fixed vertical stabilizer
+    Mass : 4 kg battery box, slides fore/aft for pitch control
+
+  Physics plugins:
+    BuoyancyEngine     — depth control (bladder volume → net force)
+    Hydrodynamics      — Fossen (1994) added mass + quadratic drag on hull
+    LiftDrag ×2        — hydrodynamic lift on port and starboard wings
+    JointPositionCtrl  — PID servo for mass_shifter_joint
+
+  Sensors:
+    IMU       — /model/tuba_glider/imu        (100 Hz)
+    Altimeter — /model/tuba_glider/altimeter   (10 Hz)
+
+  Control topics (IN):
+    /model/tuba_glider/buoyancy_engine                       — gz.msgs.Double (m³)
+    /model/tuba_glider/joint/mass_shifter_joint/0/cmd_pos    — gz.msgs.Double (m)
+
+  Telemetry topics (OUT):
+    /model/tuba_glider/buoyancy_engine/current_volume        — gz.msgs.Double
+    /model/tuba_glider/imu                                   — gz.msgs.IMU
+    /model/tuba_glider/altimeter                             — gz.msgs.Altimeter
+    /model/tuba_glider/pose                                  — gz.msgs.Pose_V (10 Hz)
+    /world/tuba_ocean/model/tuba_glider/joint_state          — gz.msgs.Model
+-->
+<sdf version="1.6">
+<model name="tuba_glider">
+
+  <pose>0 0 0 0 0 0</pose>
+  <self_collide>false</self_collide>
+  <static>false</static>
+
+  <!-- ===========================================================
+       LINK 1: hull_link — main torpedo body
+       This is the canonical base link.
+       Inertia computed for a solid cylinder L=1.8 m, R=0.105 m:
+         Ixx = Iyy = (1/12)*m*(3R²+L²) = (1/12)*59.9*(0.033+3.24) ≈ 16.3
+         Izz = (1/2)*m*R² = 0.5*59.9*0.011025 ≈ 0.330
+       =========================================================== -->
+  <link name="hull_link">
+    <pose>0 0 0 0 0 0</pose>
+
+    <inertial>
+      <!-- CoG 3 cm below geometric centre: CoB (at link origin) is above CoG,
+           giving a restoring moment that resists both roll and pitch at rest. -->
+      <pose>0 0 -0.03 0 0 0</pose>
+      <mass>59.9</mass>
+      <inertia>
+        <ixx>16.3</ixx>
+        <ixy>0.0</ixy>
+        <ixz>0.0</ixz>
+        <iyy>16.3</iyy>
+        <iyz>0.0</iyz>
+        <izz>0.330</izz>
+      </inertia>
+    </inertial>
+
+    <!-- Visual hull: cylinder rotated 90° about Y so its length lies along X -->
+    <visual name="hull_visual">
+      <pose>0 0 0 0 1.5707963 0</pose>
+      <geometry>
+        <cylinder>
+          <radius>0.105</radius>
+          <length>1.8</length>
+        </cylinder>
+      </geometry>
+      <material>
+        <ambient>0.2 0.4 0.6 1.0</ambient>
+        <diffuse>0.2 0.4 0.6 1.0</diffuse>
+        <specular>0.3 0.3 0.3 1.0</specular>
+      </material>
+    </visual>
+
+    <!-- Collision: must match visual geometry closely so that the
+         BuoyancyEngine plugin computes the correct submerged volume. -->
+    <collision name="hull_collision">
+      <pose>0 0 0 0 1.5707963 0</pose>
+      <geometry>
+        <cylinder>
+          <radius>0.105</radius>
+          <length>1.8</length>
+        </cylinder>
+      </geometry>
+    </collision>
+
+    <!-- === IMU SENSOR ===
+         Publishes gz.msgs.IMU:
+           orientation (quaternion w.r.t. world), angular_velocity (rad/s),
+           linear_acceleration (m/s², body frame)
+    -->
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <topic>/model/tuba_glider/imu</topic>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.0002</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.017</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+
+    <!-- === ALTIMETER SENSOR for depth ===
+         vertical_position = world z coordinate.
+         depth_m = -vertical_position  (bridge applies this conversion).
+    -->
+    <sensor name="altimeter_sensor" type="altimeter">
+      <always_on>true</always_on>
+      <update_rate>10</update_rate>
+      <topic>/model/tuba_glider/altimeter</topic>
+      <altimeter>
+        <vertical_position>
+          <noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise>
+        </vertical_position>
+        <vertical_velocity>
+          <noise type="gaussian"><mean>0</mean><stddev>0.01</stddev></noise>
+        </vertical_velocity>
+      </altimeter>
+    </sensor>
+
+  </link>
+
+  <!-- ===========================================================
+       LINK 2: wing_port_link — port (left) wing, fixed to hull
+       Wing root offset: hull surface at Y=+0.105 m.
+       Wing planform centre at Y=+0.305 m (root+half-span).
+       Offset slightly forward of CG for longitudinal stability.
+       =========================================================== -->
+  <link name="wing_port_link">
+    <pose>0.1 0.305 0 0 0 0</pose>
+    <inertial>
+      <mass>0.2</mass>
+      <!-- Box 0.08×0.40×0.01 m: Ixx=(1/12)*m*(y²+z²), etc. -->
+      <inertia>
+        <ixx>0.000267</ixx><ixy>0</ixy><ixz>0</ixz>
+        <iyy>0.001068</iyy><iyz>0</iyz>
+        <izz>0.001333</izz>
+      </inertia>
+    </inertial>
+    <visual name="wing_port_visual">
+      <geometry>
+        <box><size>0.08 0.40 0.01</size></box>
+      </geometry>
+      <material>
+        <ambient>0.15 0.3 0.5 1</ambient>
+        <diffuse>0.15 0.3 0.5 1</diffuse>
+        <specular>0.1 0.1 0.1 1</specular>
+      </material>
+    </visual>
+    <collision name="wing_port_collision">
+      <geometry>
+        <box><size>0.08 0.40 0.01</size></box>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wing_port_joint" type="fixed">
+    <parent>hull_link</parent>
+    <child>wing_port_link</child>
+  </joint>
+
+  <!-- ===========================================================
+       LINK 3: wing_stbd_link — starboard (right) wing, fixed
+       =========================================================== -->
+  <link name="wing_stbd_link">
+    <pose>0.1 -0.305 0 0 0 0</pose>
+    <inertial>
+      <mass>0.2</mass>
+      <inertia>
+        <ixx>0.000267</ixx><ixy>0</ixy><ixz>0</ixz>
+        <iyy>0.001068</iyy><iyz>0</iyz>
+        <izz>0.001333</izz>
+      </inertia>
+    </inertial>
+    <visual name="wing_stbd_visual">
+      <geometry>
+        <box><size>0.08 0.40 0.01</size></box>
+      </geometry>
+      <material>
+        <ambient>0.15 0.3 0.5 1</ambient>
+        <diffuse>0.15 0.3 0.5 1</diffuse>
+        <specular>0.1 0.1 0.1 1</specular>
+      </material>
+    </visual>
+    <collision name="wing_stbd_collision">
+      <geometry>
+        <box><size>0.08 0.40 0.01</size></box>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="wing_stbd_joint" type="fixed">
+    <parent>hull_link</parent>
+    <child>wing_stbd_link</child>
+  </joint>
+
+  <!-- ===========================================================
+       LINK 4: mass_shifter_link — sliding battery/mass pack
+       Prismatic joint along hull X-axis:
+         +X (fore) → CG shifts forward → nose pitches down (dive)
+         -X (aft)  → CG shifts aft     → nose pitches up  (ascend)
+       =========================================================== -->
+  <link name="mass_shifter_link">
+    <pose>0 0 0 0 0 0</pose>  <!-- initial position at hull CG -->
+    <inertial>
+      <mass>4.0</mass>
+      <!-- Box 0.20×0.05×0.05 m -->
+      <inertia>
+        <ixx>0.001667</ixx><ixy>0</ixy><ixz>0</ixz>
+        <iyy>0.014167</iyy><iyz>0</iyz>
+        <izz>0.014167</izz>
+      </inertia>
+    </inertial>
+    <visual name="mass_shifter_visual">
+      <geometry>
+        <box><size>0.20 0.05 0.05</size></box>
+      </geometry>
+      <material>
+        <ambient>0.8 0.5 0.1 1</ambient>
+        <diffuse>0.8 0.5 0.1 1</diffuse>
+      </material>
+    </visual>
+    <!-- Small box: negligible contribution to buoyancy volume -->
+    <collision name="mass_shifter_collision">
+      <geometry>
+        <box><size>0.20 0.05 0.05</size></box>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="mass_shifter_joint" type="prismatic">
+    <parent>hull_link</parent>
+    <child>mass_shifter_link</child>
+    <axis>
+      <xyz>1 0 0</xyz>
+      <use_parent_model_frame>true</use_parent_model_frame>
+      <limit>
+        <lower>-0.15</lower>       <!-- aft limit -->
+        <upper>0.15</upper>        <!-- fore limit -->
+        <effort>10.0</effort>
+        <velocity>0.05</velocity>  <!-- 5 cm/s max actuator speed -->
+      </limit>
+      <dynamics>
+        <damping>5.0</damping>
+        <friction>0.5</friction>
+      </dynamics>
+    </axis>
+  </joint>
+
+  <!-- ===========================================================
+       LINK 5: tail_fin_link — fixed vertical stabilizer
+       Prevents yaw instability; provides directional stability.
+       =========================================================== -->
+  <link name="tail_fin_link">
+    <pose>-0.85 0 0.08 0 0 0</pose>  <!-- at tail, slightly above centreline -->
+    <inertial>
+      <mass>0.1</mass>
+      <inertia>
+        <ixx>0.0000083</ixx><ixy>0</ixy><ixz>0</ixz>
+        <iyy>0.000133</iyy><iyz>0</iyz>
+        <izz>0.000133</izz>
+      </inertia>
+    </inertial>
+    <visual name="tail_fin_visual">
+      <geometry>
+        <box><size>0.10 0.005 0.15</size></box>
+      </geometry>
+      <material>
+        <ambient>0.15 0.3 0.5 1</ambient>
+        <diffuse>0.15 0.3 0.5 1</diffuse>
+      </material>
+    </visual>
+    <collision name="tail_fin_collision">
+      <geometry>
+        <box><size>0.10 0.005 0.15</size></box>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="tail_fin_joint" type="fixed">
+    <parent>hull_link</parent>
+    <child>tail_fin_link</child>
+  </joint>
+
+  <!-- ===========================================================
+       PLUGIN 1: BuoyancyEngine — depth / vertical velocity control
+       Subscribes: /model/tuba_glider/buoyancy_engine (gz.msgs.Double, m³)
+       Publishes:  /model/tuba_glider/buoyancy_engine/current_volume (gz.msgs.Double)
+
+       Net force = (volume - neutral_volume) * fluid_density * g
+         volume=0.001 m³ → net ≈ -10.2 N  (sinks)
+         volume=0.002 m³ → net =   0   N  (neutral)
+         volume=0.003 m³ → net ≈ +10.2 N  (rises)
+       =========================================================== -->
+  <plugin filename="gz-sim-buoyancy-engine-system"
+          name="gz::sim::systems::BuoyancyEngine">
+    <link_name>hull_link</link_name>
+    <namespace>tuba_glider</namespace>
+    <min_volume>0.001</min_volume>
+    <neutral_volume>0.002</neutral_volume>
+    <default_volume>0.002</default_volume>
+    <max_volume>0.003</max_volume>
+    <max_inflation_rate>0.0001</max_inflation_rate>  <!-- 0.1 L/s = 6 L/min -->
+    <fluid_density>1025</fluid_density>
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 2: JointPositionController — mass shifter PID servo
+       Topic (auto): /model/tuba_glider/joint/mass_shifter_joint/0/cmd_pos
+       Message type: gz.msgs.Double  (setpoint in metres)
+       =========================================================== -->
+  <plugin filename="gz-sim-joint-position-controller-system"
+          name="gz::sim::systems::JointPositionController">
+    <joint_name>mass_shifter_joint</joint_name>
+    <p_gain>15.0</p_gain>
+    <i_gain>0.5</i_gain>
+    <d_gain>2.0</d_gain>
+    <i_max>5.0</i_max>
+    <i_min>-5.0</i_min>
+    <cmd_max>10.0</cmd_max>
+    <cmd_min>-10.0</cmd_min>
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 3: Hydrodynamics — Fossen (1994) model on hull_link
+       Implements: τ = −M_A*ν̇ − C_A(ν)*ν − D(ν)*ν
+       Applied in body frame of hull_link.
+
+       Coefficient derivation (L=1.8 m, R=0.105 m, ρ=1025 kg/m³):
+         xDotU  ≈ -2.0   : surge added mass   (streamlined bow, ~5% displaced)
+         yDotV  ≈ -40.0  : sway added mass    (π*ρ*R²*L × reduction factor)
+         zDotW  ≈ -40.0  : heave added mass   (same as sway, axisymmetric hull)
+         mDotQ  ≈ -4.0   : pitch added inertia
+         nDotR  ≈ -4.0   : yaw added inertia
+         xUabsU ≈ -3.0   : axial quadratic drag
+         yVabsV ≈ -150.0 : cross-flow quadratic drag (Cd_cf*D*L*ρ/2)
+         zWabsW ≈ -150.0 : heave quadratic drag
+         mQabsQ ≈ -25.0  : pitch quadratic damping
+         nRabsR ≈ -25.0  : yaw quadratic damping
+       =========================================================== -->
+  <plugin filename="gz-sim-hydrodynamics-system"
+          name="gz::sim::systems::Hydrodynamics">
+    <link_name>hull_link</link_name>
+    <!-- Added mass -->
+    <xDotU>-2.0</xDotU>
+    <yDotV>-40.0</yDotV>
+    <zDotW>-40.0</zDotW>
+    <kDotP>0.0</kDotP>
+    <mDotQ>-4.0</mDotQ>
+    <nDotR>-4.0</nDotR>
+    <!-- Linear drag (small; quadratic dominates at glider speeds) -->
+    <xU>0.0</xU>
+    <yV>0.0</yV>
+    <zW>0.0</zW>
+    <kP>0.0</kP>
+    <mQ>0.0</mQ>
+    <nR>0.0</nR>
+    <!-- Quadratic drag -->
+    <xUabsU>-3.0</xUabsU>
+    <yVabsV>-150.0</yVabsV>
+    <zWabsW>-150.0</zWabsW>
+    <kPabsP>-0.5</kPabsP>
+    <mQabsQ>-25.0</mQabsQ>
+    <nRabsR>-25.0</nRabsR>
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 4: LiftDrag on port wing
+       During a dive: glider moves nose-down-forward, wing sees AoA
+       from flow → vertical lift component drives forward translation.
+       fluid is seawater (density 1025 kg/m³).
+       cla=4.0 (1/rad), cda=0.08 (min drag), area=0.032 m².
+       =========================================================== -->
+  <plugin filename="gz-sim-lift-drag-system"
+          name="gz::sim::systems::LiftDrag">
+    <air_density>1025</air_density>
+    <cla>4.0</cla>
+    <cla_stall>-0.5</cla_stall>
+    <cda>0.08</cda>
+    <cda_stall>0.5</cda_stall>
+    <alpha_stall>0.17</alpha_stall>  <!-- ~10° stall angle -->
+    <a0>0.0</a0>                     <!-- symmetric foil -->
+    <area>0.032</area>               <!-- 0.40 m × 0.08 m -->
+    <forward>1 0 0</forward>         <!-- chord direction in body frame -->
+    <upward>0 0 1</upward>           <!-- lift direction (vertical) -->
+    <link_name>wing_port_link</link_name>
+    <cp>0 0 0</cp>                   <!-- centre of pressure at link origin -->
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 5: LiftDrag on starboard wing
+       =========================================================== -->
+  <plugin filename="gz-sim-lift-drag-system"
+          name="gz::sim::systems::LiftDrag">
+    <air_density>1025</air_density>
+    <cla>4.0</cla>
+    <cla_stall>-0.5</cla_stall>
+    <cda>0.08</cda>
+    <cda_stall>0.5</cda_stall>
+    <alpha_stall>0.17</alpha_stall>
+    <a0>0.0</a0>
+    <area>0.032</area>
+    <forward>1 0 0</forward>
+    <upward>0 0 1</upward>
+    <link_name>wing_stbd_link</link_name>
+    <cp>0 0 0</cp>
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 6: PosePublisher — ground truth pose for bridge/logging
+       Publishes: /model/tuba_glider/pose (gz.msgs.Pose_V) at 10 Hz
+       =========================================================== -->
+  <plugin filename="gz-sim-pose-publisher-system"
+          name="gz::sim::systems::PosePublisher">
+    <publish_link_pose>true</publish_link_pose>
+    <publish_collision_pose>false</publish_collision_pose>
+    <publish_visual_pose>false</publish_visual_pose>
+    <publish_nested_model_pose>false</publish_nested_model_pose>
+    <publish_model_pose>false</publish_model_pose>
+    <update_frequency>10</update_frequency>
+  </plugin>
+
+  <!-- ===========================================================
+       PLUGIN 7: JointStatePublisher — joint telemetry
+       Publishes: /world/tuba_ocean/model/tuba_glider/joint_state
+       =========================================================== -->
+  <plugin filename="gz-sim-joint-state-publisher-system"
+          name="gz::sim::systems::JointStatePublisher"/>
+
+</model>
+</sdf>

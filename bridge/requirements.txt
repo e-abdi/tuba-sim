@@ -1,0 +1,11 @@
+# Python dependencies for gz_zephyr_bridge.py
+#
+# NOTE: gz.transport and gz.msgs are installed system-wide via gz-sim apt packages.
+# Do NOT pip-install them — they must come from the system install.
+# Typical apt packages (version numbers match your gz-sim install):
+#   sudo apt install python3-gz-transport13 python3-gz-msgs10
+#
+# Only the packages below need pip:
+
+numpy>=1.24.0
+matplotlib>=3.7.0

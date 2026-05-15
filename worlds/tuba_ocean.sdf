@@ -1,0 +1,158 @@
+<?xml version="1.0" ?>
+<!--
+  tuba_ocean.sdf — TUBA glider simulation world
+  gz-sim 10.2.0 / SDF 1.6
+
+  Coordinate layout:
+    z = 20 : water surface  (Coast Water visual, buoyancy transition)
+    z =  0 : seafloor       (gray slab, top face)
+    20 m water column
+
+  Fluid densities:
+    z > 20 : air       1.2   kg/m³
+    z ≤ 20 : seawater  1025  kg/m³
+
+  Glider at z=17 (3 m below surface), static for visual check.
+-->
+<sdf version="1.6">
+  <world name="tuba_ocean">
+
+    <!-- =====================================================
+         GUI — camera starts zoomed on the glider at z=17
+         Position: 20 m to the side and slightly above the glider.
+         Pitch 0.25 rad tilts the view slightly downward.
+         ===================================================== -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>20 20 -0.2 0 0.25 2.45</pose>
+      </camera>
+    </gui>
+
+    <!-- =====================================================
+         SCENE
+         ===================================================== -->
+    <scene>
+      <ambient>0.05 0.1 0.2 1.0</ambient>
+      <background>0.02 0.06 0.15 1.0</background>
+      <grid>false</grid>
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- =====================================================
+         PHYSICS — 1 ms step for stable hydrodynamics
+         ===================================================== -->
+    <gravity>0 0 -9.8</gravity>
+
+    <physics name="1ms" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>50</iters>
+        </solver>
+      </ode>
+    </physics>
+
+    <!-- =====================================================
+         MANDATORY SYSTEM PLUGINS
+         ===================================================== -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-contact-system"
+            name="gz::sim::systems::Contact"/>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system"
+            name="gz::sim::systems::Imu"/>
+    <plugin filename="gz-sim-altimeter-system"
+            name="gz::sim::systems::Altimeter"/>
+
+    <!-- =====================================================
+         GRADED BUOYANCY — water surface at z=20
+         ===================================================== -->
+    <plugin filename="gz-sim-buoyancy-system"
+            name="gz::sim::systems::Buoyancy">
+      <graded_buoyancy>
+        <default_density>1025</default_density>
+        <density_change>
+          <above_depth>20</above_depth>
+          <density>1.2</density>
+        </density_change>
+      </graded_buoyancy>
+      <enable>my_glider_v2</enable>
+    </plugin>
+
+    <!-- =====================================================
+         LIGHTING
+         ===================================================== -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 100 0 0 0</pose>
+      <diffuse>0.7 0.75 0.8 1</diffuse>
+      <specular>0.15 0.15 0.15 1</specular>
+      <attenuation>
+        <range>2000</range><constant>0.9</constant>
+        <linear>0.01</linear><quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.3 0.1 -0.95</direction>
+    </light>
+
+    <light type="directional" name="underwater_fill">
+      <cast_shadows>false</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.08 0.14 0.25 1</diffuse>
+      <specular>0 0 0 1</specular>
+      <direction>0 0 -1</direction>
+    </light>
+
+    <!-- =====================================================
+         WATER SURFACE — Coast Water Fuel model at z=20
+         ===================================================== -->
+    <include>
+      <pose>0 0 20 0 0 0</pose>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Coast%20Water</uri>
+      <name>coast_water</name>
+    </include>
+
+    <!-- =====================================================
+         SEAFLOOR — gray slab, top face at z=0
+         200×200 m covers the visible area without going truly
+         infinite. Increase size if the glider ever reaches the edge.
+         ===================================================== -->
+    <model name="seafloor">
+      <static>true</static>
+      <pose>0 0 -0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="col">
+          <geometry><box><size>200 200 1</size></box></geometry>
+          <surface><friction><ode><mu>0.6</mu><mu2>0.6</mu2></ode></friction></surface>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>200 200 1</size></box></geometry>
+          <material>
+            <ambient>0.38 0.40 0.43 1</ambient>
+            <diffuse>0.43 0.46 0.50 1</diffuse>
+            <specular>0.04 0.04 0.04 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- =====================================================
+         GLIDER — spawned 3 m below surface at z=17, physics active.
+         ===================================================== -->
+    <include>
+      <pose>0 0 17 0 0 0</pose>
+      <uri>model://my_glider_v2</uri>
+      <name>my_glider_v2</name>
+    </include>
+
+  </world>
+</sdf>
