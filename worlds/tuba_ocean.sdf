@@ -128,19 +128,19 @@
          ===================================================== -->
     <model name="seafloor">
       <static>true</static>
-      <pose>0 0 -0.5 0 0 0</pose>
+      <pose>0 0 -150.5 0 0 0</pose>
       <link name="link">
         <collision name="col">
           <geometry><box><size>200 200 1</size></box></geometry>
           <surface><friction><ode><mu>0.6</mu><mu2>0.6</mu2></ode></friction></surface>
         </collision>
         <visual name="vis">
-          <geometry><box><size>200 200 1</size></box></geometry>
-          <material>
-            <ambient>0.38 0.40 0.43 1</ambient>
-            <diffuse>0.43 0.46 0.50 1</diffuse>
-            <specular>0.04 0.04 0.04 1</specular>
-          </material>
+          <geometry>
+            <mesh>
+              <uri>model://seafloor/seafloor_coral.dae</uri>
+              <scale>50 50 50</scale>
+            </mesh>
+          </geometry>
         </visual>
       </link>
     </model>

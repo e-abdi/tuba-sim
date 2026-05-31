@@ -2,6 +2,14 @@
 
 Gazebo gz-sim 10 simulation of the [TUBA open-source underwater glider](https://hackaday.io/project/196850-tuba-the-open-source-glider), including Zephyr RTOS SIL (software-in-the-loop) integration.
 
+![TUBA Simulation](pics/tuba-sim.png)
+
+## Models & Assets
+
+- **Glider Hull**: TUBA shell converted to SDF using [FusionSDF](https://github.com/andreasBihlmaier/FusionSDF)
+- **Water Surface**: [Coast Water](https://app.gazebosim.org/OpenRobotics/fuel/models/Coast%20Water) model from Gazebo Fuel
+- **Seafloor**: [Coral Reef Outcrop](https://sketchfab.com/3d-models/coral-reef-outcrop-8bc72c9e4575470ea30d1313e48b730c) model from Sketchfab (unzip `models/models.zip` to use)
+
 ## Prerequisites
 
 | Tool | Version |
