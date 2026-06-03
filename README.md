@@ -1,6 +1,6 @@
 # TUBA Glider Simulation
 
-Gazebo gz-sim 10 simulation of the [TUBA open-source underwater glider](https://hackaday.io/project/196850-tuba-the-open-source-glider), including Zephyr RTOS SIL (software-in-the-loop) integration.
+Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.io/project/196850-tuba-the-open-source-glider), including Zephyr RTOS SIL (software-in-the-loop) integration.
 
 ![TUBA Simulation](pics/tuba-sim.png)
 
