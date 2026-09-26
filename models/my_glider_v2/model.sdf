@@ -681,14 +681,211 @@
           </mesh>
         </geometry>
       </visual>
-      <collision name="buoyancy_hull_collision">
-        <pose>1.2407630490868478 0.0 -0.013853052401155532 0 1.5707963 0</pose>
-        <geometry>
-          <cylinder>
-            <radius>0.0555</radius>
-            <length>1.30</length>
-          </cylinder>
-        </geometry>
+      <!-- Placeholder hull volume: a 1.30 m x 55.5 mm-radius cylinder split into 10
+           segments. gz-sim 10.5.0's graded Buoyancy cuts each cylinder with a plane
+           normal to the cylinder's own axis instead of the real waterline, so one
+           long cylinder always loses buoyancy from the same end regardless of
+           attitude. Short segments keep the per-segment error small and the
+           buoyancy distribution along the hull correct at any pitch. Each segment's
+           +z points aft, so near-vertical nose-down floats are handled exactly.
+
+           Trim (CB = hull centre, x=-0.5387, z=-0.0031 in the model frame):
+           - CB sits 6 mm above the CG (typical glider metacentric height).
+           - Battery at +0.14 (fully forward) puts the CG 22 mm ahead of the CB
+             -> ~75 deg nose-down; battery at -0.05 -> ~35 deg nose-up;
+             level at battery ~-0.019. Pitch ~= atan(CG offset / 6 mm). -->
+      <collision name="hull_seg_0">
+        <pose relative_to="__model__">0.04632 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_1">
+        <pose relative_to="__model__">-0.08368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_2">
+        <pose relative_to="__model__">-0.21368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_3">
+        <pose relative_to="__model__">-0.34368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_4">
+        <pose relative_to="__model__">-0.47368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_5">
+        <pose relative_to="__model__">-0.60368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_6">
+        <pose relative_to="__model__">-0.73368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_7">
+        <pose relative_to="__model__">-0.86368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_8">
+        <pose relative_to="__model__">-0.99368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
+        <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
+        <surface>
+          <bounce>
+            <restitution_coefficient>0.0</restitution_coefficient>
+            <threshold>100000.0</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <kp>1e5</kp>
+              <kd>200</kd>
+              <max_vel>0.05</max_vel>
+            </ode>
+          </contact>
+          <friction>
+            <ode><mu>0.5</mu><mu2>0.5</mu2></ode>
+          </friction>
+        </surface>
+      </collision>
+      <collision name="hull_seg_9">
+        <pose relative_to="__model__">-1.12368 0 -0.00307 0 -1.5707963 0</pose>
+        <geometry><cylinder><radius>0.0555</radius><length>0.130</length></cylinder></geometry>
         <!-- restitution=0 prevents bouncing; kd dissipates impact energy -->
         <surface>
           <bounce>
@@ -4187,9 +4384,11 @@
       <child>mass_shifter_assembly_1__battery_1__rigid_group_1_1</child>
       <axis>
         <xyz expressed_in="__model__">1.0000000000000002 5.059521747064987e-12 8.76332319475327e-12</xyz>
+        <!-- Travel estimated from the CAD: ~0.34 m rods, ~0.14 m battery pack.
+             Positive = toward the nose. -->
         <limit>
           <lower>-0.05</lower>
-          <upper>0.05</upper>
+          <upper>0.14</upper>
         </limit>
       </axis>
     </joint>
@@ -4310,10 +4509,9 @@
       <axis />
     </joint>
 
-    <!-- Nose ballast: 0.2 kg placed at x=+0.4 m (nose dome section, same region as
-         the antenna at +0.36). +X is the nose direction in this model (confirmed by
-         antenna at +0.36, rudder at -1.09). The 0.2 kg shifts CoG ~1 cm toward the
-         nose to give a slight natural nose-down tendency.
+    <!-- Nose ballast: 0.2 kg at x=+0.4 m. +X is the nose (rudder and antenna are at
+         x~-1.1..-1.3, hull spans x -1.19..+0.11). Its mass is part of the neutral
+         buoyancy budget; pitch trim is set by the hull_seg_* collision positions in fairing_1.
          Mass shifter note: joint axis is +X (toward nose), so POSITIVE joint position
          moves the battery toward the nose → nose-DOWN. NEGATIVE → nose-UP. -->
     <link name="nose_ballast">
@@ -4332,23 +4530,44 @@
       <child>nose_ballast</child>
     </joint>
 
+    <!-- Hydrodynamics reference link at the hull centre, axes aligned with the model
+         (x = nose, y = port, z = up). The Hydrodynamics system evaluates velocity and
+         applies drag at its link's origin; fairing_1's origin is at the nose tip
+         (x=+0.67), which made the hull drag act like a sea anchor on the nose and
+         flipped the glider tail-first. -->
+    <link name="hydro_link">
+      <pose relative_to="__model__">-0.5387 0 -0.0031 0 0 0</pose>
+      <inertial>
+        <mass>0.001</mass>
+        <inertia>
+          <ixx>1e-6</ixx><ixy>0</ixy><ixz>0</ixz>
+          <iyy>1e-6</iyy><iyz>0</iyz>
+          <izz>1e-6</izz>
+        </inertia>
+      </inertial>
+    </link>
+    <joint name="fix__hydro_link" type="fixed">
+      <parent>fairing_1</parent>
+      <child>hydro_link</child>
+    </joint>
+
     <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
       <joint_name>vbd_1__slider_1</joint_name>
       <topic>/my_glider_v2/vbd_joint_pos</topic>
       <initial_position>0.025</initial_position>
-      <p_gain>800</p_gain>
+      <p_gain>20000</p_gain>
       <i_gain>0.0</i_gain>
-      <d_gain>80</d_gain>
+      <d_gain>400</d_gain>
       <cmd_max>2000</cmd_max>
       <cmd_min>-2000</cmd_min>
     </plugin>
     <plugin filename="gz-sim-joint-position-controller-system" name="gz::sim::systems::JointPositionController">
       <joint_name>mass_shifter_assembly_1__slider_3</joint_name>
       <topic>/my_glider_v2/battery_joint_pos</topic>
-      <initial_position>0.0</initial_position>
-      <p_gain>800</p_gain>
+      <initial_position>0.14</initial_position>
+      <p_gain>20000</p_gain>
       <i_gain>0.0</i_gain>
-      <d_gain>80</d_gain>
+      <d_gain>400</d_gain>
       <cmd_max>2000</cmd_max>
       <cmd_min>-2000</cmd_min>
     </plugin>
@@ -4359,16 +4578,17 @@
     <plugin filename="gz-sim-buoyancy-engine-system" name="gz::sim::systems::BuoyancyEngine">
       <link_name>buoyancy_engine_link</link_name>
       <namespace>my_glider_v2</namespace>
-      <!-- 1 L total range: 0 L (max sink) to 1 L (max float).
-           Neutral reference at 0.5 L — engine contributes 0 extra force there.
-           Hull alone gives 12.65 kg buoyancy vs 12.67 kg weight → net -0.2 N,
-           so at neutral the glider very slowly drifts down (correct hover behaviour).
-           At max (1 L): +5.1 N net → rises to surface, antenna sticks out.
-           At min (0 L): -5.3 N net → dives quickly. -->
+      <!-- Bladder range 0..1.2 L, neutral at 0.5 L (hull alone is ~neutral):
+           0.0 L  -> -5 N (max dive)
+           0.5 L  ->  0 N
+           0.6 L  -> +1 N  surface float: ~70-75 deg nose-down with battery fully
+                           forward, tail end at the waterline, antenna out.
+                           More reserve floats flatter (0.8 L -> ~50 deg).
+           1.2 L  -> +7 N (max) -->
       <min_volume>0.0</min_volume>
       <neutral_volume>0.0005</neutral_volume>
-      <default_volume>0.0005</default_volume>
-      <max_volume>0.001</max_volume>
+      <default_volume>0.0006</default_volume>
+      <max_volume>0.0012</max_volume>
       <max_inflation_rate>0.0001</max_inflation_rate>
       <fluid_density>1025.0</fluid_density>
       <!-- surface MUST match the world water surface (z=20), not the seafloor.
@@ -4382,7 +4602,7 @@
          only to damp sinking, roll, and pitch oscillations). -->
     <plugin filename="gz-sim-hydrodynamics-system"
             name="gz::sim::systems::Hydrodynamics">
-      <link_name>fairing_1</link_name>
+      <link_name>hydro_link</link_name>
       <!-- Added mass: all zero — use SDF fluid_added_mass instead if needed -->
       <xDotU>0.0</xDotU>
       <yDotV>0.0</yDotV>
@@ -4390,13 +4610,16 @@
       <kDotP>0.0</kDotP>
       <mDotQ>0.0</mDotQ>
       <nDotR>0.0</nDotR>
-      <!-- Linear drag — yV was -80 which dropped terminal rise speed to ~6 cm/s,
-           making the glider look stuck. At -10 the terminal speed is ~19 cm/s
-           (3 m to surface in ~16 s) while still damping surface oscillations. -->
-      <xU>-0.5</xU><yV>-10.0</yV><zW>-3.0</zW>
+      <!-- Axes are hydro_link's: x = axial, y = lateral, z = vertical.
+           Linear drag — vertical (zW) was -80, which dropped terminal rise speed
+           to ~6 cm/s. At -10 the terminal speed is ~19 cm/s at full volume. -->
+      <xU>-0.5</xU><yV>-3.0</yV><zW>-10.0</zW>
       <kP>-1.0</kP><mQ>-3.0</mQ><nR>-3.0</nR>
-      <!-- Quadratic drag — high angular terms damp pitch/roll oscillations -->
-      <xUabsU>-0.5</xUabsU>
+      <!-- Quadratic drag — high angular terms damp pitch/roll oscillations.
+           Axial: 0.5*rho*Cd*A with A = 9.7e-3 m^2 hull frontal area and
+           Cd ~0.6 including wings, rudder and antenna -> ~3. (-0.5 let the
+           glider reach ~2 m/s; real gliders glide at 0.3-0.6 m/s.) -->
+      <xUabsU>-3.0</xUabsU>
       <yVabsV>-80.0</yVabsV>
       <zWabsW>-80.0</zWabsW>
       <kPabsP>-5.0</kPabsP>

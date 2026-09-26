@@ -135,9 +135,11 @@
           <surface><friction><ode><mu>0.6</mu><mu2>0.6</mu2></ode></friction></surface>
         </collision>
         <visual name="vis">
+          <!-- glTF is Y-up and gz does not convert it: roll +90 deg to lay it flat -->
+          <pose>0 0 0 1.5707963 0 0</pose>
           <geometry>
             <mesh>
-              <uri>model://seafloor/seafloor_coral.dae</uri>
+              <uri>model://seafloor/seafloor_coral.glb</uri>
               <scale>50 50 50</scale>
             </mesh>
           </geometry>
@@ -146,12 +148,12 @@
     </model>
 
     <!-- =====================================================
-         GLIDER — static for visual check (step 1).
-         Remove <static>true</static> for physics testing.
-         Spawned 3 m below surface at z=17.
+         GLIDER — starts floating at the surface (z=20), ~72 deg nose-down
+         with the tail end at the waterline and the antenna out of the water.
+         scripts/glider_mission.py drives the dive/climb cycle.
          ===================================================== -->
     <include>
-      <pose>0 0 17 0 0 0</pose>
+      <pose>0 0 18.879 0 1.2566 0</pose>
       <uri>model://my_glider_v2</uri>
       <name>my_glider_v2</name>
     </include>

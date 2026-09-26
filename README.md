@@ -8,7 +8,7 @@ Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.i
 
 - **Glider Hull**: TUBA shell converted to SDF using [FusionSDF](https://github.com/andreasBihlmaier/FusionSDF)
 - **Water Surface**: [Coast Water](https://app.gazebosim.org/OpenRobotics/fuel/models/Coast%20Water) model from Gazebo Fuel
-- **Seafloor**: [Coral Reef Outcrop](https://sketchfab.com/3d-models/coral-reef-outcrop-8bc72c9e4575470ea30d1313e48b730c) model from Sketchfab (unzip `models/models.zip` to use)
+- **Seafloor**: [Coral Reef Outcrop](https://sketchfab.com/3d-models/coral-reef-outcrop-8bc72c9e4575470ea30d1313e48b730c) model from Sketchfab (run `unzip models/seafloor.zip "coral/seafloor/*" -d /tmp && mv /tmp/coral/seafloor models/` before launching)
 
 ## Prerequisites
 
@@ -47,31 +47,47 @@ bash scripts/run_sim.sh
 bash scripts/run_sim.sh 4
 ```
 
-The glider spawns 5 m below the surface in neutral buoyancy.
+The glider spawns floating at the surface, ~70° nose-down with the antenna out of the water.
+
+## Dive Mission
+
+With the sim running, in a second terminal:
+
+```bash
+python3 scripts/glider_mission.py                 # repeat dive cycles forever
+python3 scripts/glider_mission.py --cycles 1 --log /tmp/mission.csv
+```
+
+Each cycle: float at the surface (~70° nose-down, antenna out) → dive steeply (~75°) to 2 m
+→ glide down at 30° nose-down to 10 m → turn buoyant and climb at 30° nose-up to 1 m
+→ pitch over to ~75° nose-down and rise tail-first until the antenna is out again.
+Depths, pitch, volumes and gains are all command-line options (`--help`).
 
 ## Phase 2 — Manual Control
 
+The world spawns `my_glider_v2`. Bladder volume range is 0–1.2 L (0.0005 = neutral).
+Don't run manual commands while `glider_mission.py` is running; it overrides them.
+
+`run_sim.sh` pins gz-transport to loopback (`GZ_IP=127.0.0.1`) so other terminals reliably
+find the sim on machines with several network interfaces. Run `export GZ_IP=127.0.0.1` in any
+terminal where you use `gz topic` / `gz service` (`glider_mission.py` sets it itself).
+
 ```bash
-# Rise (max positive buoyancy)
-gz topic -t /model/tuba_glider/buoyancy_engine -m gz.msgs.Double -p "data: 0.003"
+# Surface float (+1 N reserve; with battery fully forward floats ~70° nose-down)
+gz topic -t /model/my_glider_v2/buoyancy_engine -m gz.msgs.Double -p "data: 0.0006"
 
-# Sink (max negative buoyancy)
-gz topic -t /model/tuba_glider/buoyancy_engine -m gz.msgs.Double -p "data: 0.001"
+# Glide down (-1.5 N) / glide up (+1.5 N)
+gz topic -t /model/my_glider_v2/buoyancy_engine -m gz.msgs.Double -p "data: 0.00035"
+gz topic -t /model/my_glider_v2/buoyancy_engine -m gz.msgs.Double -p "data: 0.00065"
 
-# Neutral
-gz topic -t /model/tuba_glider/buoyancy_engine -m gz.msgs.Double -p "data: 0.002"
+# Battery (mass shifter), range -0.05..0.14 m, positive = toward the nose.
+# Submerged pitch ~= atan((battery + 0.0195) / 0.0428), positive = nose-down:
+#   -0.05 → ~35° nose-up, -0.0195 → level, 0.005 → 30° down, 0.14 → 75° down
+gz topic -t /my_glider_v2/battery_joint_pos -m gz.msgs.Double -p "data: 0.005"
 
-# Pitch nose-down (mass forward → dive attitude)
-gz topic -t /model/tuba_glider/joint/mass_shifter_joint/0/cmd_pos -m gz.msgs.Double -p "data: 0.12"
-
-# Pitch nose-up (mass aft → ascend attitude)
-gz topic -t /model/tuba_glider/joint/mass_shifter_joint/0/cmd_pos -m gz.msgs.Double -p "data: -0.12"
-
-# Monitor depth
-gz topic -e -t /model/tuba_glider/altimeter
-
-# Monitor IMU
-gz topic -e -t /model/tuba_glider/imu
+# Monitor bladder volume / joint positions
+gz topic -e -t /model/my_glider_v2/buoyancy_engine/current_volume
+gz topic -e -t /world/tuba_ocean/model/my_glider_v2/joint_state
 ```
 
 ## Phase 3 — Buoyancy Smoke Test

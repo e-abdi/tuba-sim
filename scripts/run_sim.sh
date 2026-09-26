@@ -7,11 +7,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 export GZ_SIM_RESOURCE_PATH="${PROJECT_ROOT}/models:${GZ_SIM_RESOURCE_PATH}"
+# Keep gz-transport on loopback. With several interfaces (Wi-Fi, VPN, docker)
+# discovery can pick different ones per process, and scripts in another
+# terminal then never see the sim. Other terminals need the same GZ_IP.
+export GZ_IP="${GZ_IP:-127.0.0.1}"
 
 WORLD="${PROJECT_ROOT}/worlds/tuba_ocean.sdf"
 VERBOSITY="${1:-3}"   # default verbosity 3; pass 4 for debug
 
 echo "[run_sim] GZ_SIM_RESOURCE_PATH=${GZ_SIM_RESOURCE_PATH}"
+echo "[run_sim] GZ_IP=${GZ_IP}"
 echo "[run_sim] Launching: gz sim -v ${VERBOSITY} ${WORLD}"
 
 exec gz sim -v "${VERBOSITY}" "${WORLD}"
