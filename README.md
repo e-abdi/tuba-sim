@@ -14,16 +14,12 @@ Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.i
 
 | Tool | Version |
 |------|---------|
-| gz-sim | 10.2.0 |
+| gz-sim | 10.5.0 |
 | Python | 3.10+ |
-| gz Python bindings | system install (`python3-gz-transport*`) |
-| Zephyr SDK | 0.16+ (for Phase 4 only) |
-| `west` | 1.2+ (for Phase 4 only) |
-
-```bash
-# Install Python plotting deps
-pip install -r bridge/requirements.txt
-```
+| gz Python bindings | `python3-gz-transport15` (mission script; not needed for the SIL bridge) |
+| libgz-transport15-dev, libgz-msgs12-dev | SIL bridge |
+| Zephyr workspace + SDK, `west` | firmware SIL build (Phase 4) |
+| python3-pexpect | `scripts/test_sil.py` |
 
 ## Project Layout
 
@@ -32,9 +28,8 @@ worlds/            Ocean world SDF
 models/tuba_glider/ Glider model (SDF + config)
 config/            Physics tuning parameters
 scripts/           Launch and test scripts
-bridge/            Gazebo ↔ Zephyr UDP bridge
-zephyr/            Zephyr RTOS firmware skeleton
-docs/              FSD and architecture docs
+bridge/            Gazebo ↔ firmware bridge (C++, gz-transport + UDP)
+docs/              FSD, SIL notes (docs/sil.md)
 ```
 
 ## Phase 1 & 2 — Run the Simulation
@@ -112,32 +107,22 @@ Plot the logged trajectory:
 python3 scripts/plot_trajectory.py --input /tmp/pose_log.txt
 ```
 
-## Phase 4 — Zephyr SIL
+## Phase 4 — Real firmware in the loop (SIL)
 
-### native_posix (recommended for dev)
-
-```bash
-cd zephyr
-west build -b native_posix
-./build/zephyr/zephyr.exe &
-
-# In another terminal — start Gazebo first, then bridge
-python3 ../bridge/gz_zephyr_bridge.py --verbose
-```
-
-### qemu_cortex_m3
+The [tuba-firmware](https://github.com/e-abdi/tuba-firmware) builds as a Linux
+process and flies this glider: its menus, parameters and missions are unchanged,
+the pump/pitch motors move the Gazebo model and the sensors read the model's
+pose. Full description, conventions and parameter values: [docs/sil.md](docs/sil.md).
 
 ```bash
-cd zephyr
-west build -b qemu_cortex_m3
+bash scripts/build_bridge.sh                 # once: Gazebo <-> firmware bridge (C++)
+cd ~/zephyrproject/tuba && ./sil_build.sh    # once: firmware for native_sim
 
-# Launch QEMU with SLIRP networking (host appears at 10.0.2.2 inside QEMU)
-qemu-system-arm -M mps2-an385 -cpu cortex-m3 -nographic \
-  -kernel build/zephyr/zephyr.elf \
-  -netdev user,id=eth0,hostfwd=udp::5555-:5555,hostfwd=udp::5556-:5556 \
-  -net nic,model=lan9118,netdev=eth0 &
+bash scripts/run_sim.sh                      # terminal 1: Gazebo, press Play
+bash scripts/run_sil.sh                      # terminal 2: bridge
+~/zephyrproject/tuba/sil_run.sh              # terminal 3: glider console (ENTER -> menu)
 
-python3 ../bridge/gz_zephyr_bridge.py
+python3 scripts/test_sil.py                  # headless end-to-end check (~6 min)
 ```
 
 ## Physics Tuning
@@ -173,4 +158,4 @@ Place mesh files in `models/tuba_glider/meshes/`. Update the inertia and mass va
 1. Fuel model URLs (`Coast Water`, `OceanFloorShipwreck`) must be verified with `gz fuel download` before first run.
 2. The hull geometry uses a cylinder placeholder — replace with real CAD mesh for accurate drag and buoyancy volume.
 3. Hydrodynamics coefficients are analytical estimates — expect 1–2 tuning iterations.
-4. `qemu_cortex_m3` board requires Zephyr Ethernet driver (`CONFIG_ETH_SMSC911X`) which must be available in your Zephyr SDK version.
+4. The Gazebo model has no roll mass: the firmware's heading hold moves a tracked-only roll position.
