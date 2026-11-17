@@ -29,6 +29,9 @@ import time
 import pexpect
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# `gz sim` needs the gz-sim10 CLI package; the headless server binary alone
+# (package gz-sim10-server) is enough for this test.
+GZ_SERVER = "/usr/libexec/gz/sim10/gz-sim-server"
 FW_DEFAULT = os.path.expanduser("~/zephyrproject/tuba/build_sil/zephyr/zephyr.exe")
 
 
@@ -69,7 +72,8 @@ def main():
     try:
         if not args.attach:
             gz_log = open(os.path.join(args.out, "gz.log"), "w")
-            gz = subprocess.Popen(["gz", "sim", "-s", "-r", "-v", "1", os.path.join(ROOT, "worlds/tuba_ocean.sdf")],
+            gz_cmd = [GZ_SERVER] if os.path.exists(GZ_SERVER) else ["gz", "sim"]
+            gz = subprocess.Popen(gz_cmd + ["-s", "-r", "-v", "1", os.path.join(ROOT, "worlds/tuba_ocean.sdf")],
                                   env=env, stdout=gz_log, stderr=subprocess.STDOUT, cwd=ROOT)
             procs.append(gz)
             log(f"gz sim server started (pid {gz.pid}, partition {args.partition})")
@@ -81,8 +85,9 @@ def main():
             log(f"bridge started (pid {br.pid})")
             time.sleep(2)
 
-        fw_logfile = open(os.path.join(args.out, "firmware.log"), "wb")
-        fw = pexpect.spawn(args.firmware, ["--flash_in_ram"], env=env, timeout=30, logfile=fw_logfile)
+        fw_logfile = open(os.path.join(args.out, "firmware.log"), "w", encoding="utf-8", errors="replace")
+        fw = pexpect.spawn(args.firmware, ["--flash_in_ram"], env=env, timeout=30, logfile=fw_logfile,
+                           encoding="utf-8", codec_errors="replace")
         log(f"firmware started (pid {fw.pid})")
 
         fw.expect("press ENTER within")
@@ -95,7 +100,7 @@ def main():
         fw.expect(r"Select \[1-9,a,x\]")
         fw.send("a\n")
         fw.expect("expected sensors present|expected sensor\\(s\\) missing", timeout=60)
-        if "present" not in fw.after.decode():
+        if "present" not in fw.after:
             raise SystemExit("FAIL: sensor scan reports missing sensors (is the bridge running?)")
         log("PASS 1: all five sensors present on the emulated I2C buses")
 
@@ -120,9 +125,11 @@ def main():
         fw.send("3\n")                       # show positions
         fw.expect(r"\[POSITION\] roll=(-?\d+)s, pitch=(-?\d+)s, pump=(-?\d+)s")
         roll_s, pitch_s, pump_s = (int(x) for x in fw.match.groups())
-        if (pitch_s, pump_s) != (10, 6):
-            raise SystemExit(f"FAIL: positions pitch={pitch_s} pump={pump_s}, expected 10/6")
-        log("PASS 2a: firmware dead-reckoning pitch=10 s, pump=6 s")
+        # The battery starts on the aft limit switch, which the firmware backs
+        # off by 1 s at boot, so pitch reads 10 or 11 depending on timing.
+        if pump_s != 6 or pitch_s not in (10, 11):
+            raise SystemExit(f"FAIL: positions pitch={pitch_s} pump={pump_s}, expected 10-11/6")
+        log(f"PASS 2a: firmware dead-reckoning pitch={pitch_s} s, pump={pump_s} s")
 
         time.sleep(25)                       # let it float up and settle
         fw.expect(r"Select \[1-9,a,x\]")
@@ -184,12 +191,12 @@ def main():
             elif i == 1:
                 break
             else:
-                raise SystemExit(f"FAIL: dive ended early: {fw.after.decode()} (max depth {max_depth:.2f} m)")
+                raise SystemExit(f"FAIL: dive ended early: {fw.after} (max depth {max_depth:.2f} m)")
             if time.time() - t0 > 600:
                 raise SystemExit("FAIL: dive took longer than 10 min")
         log(f"PASS 3a: reached {max_depth:.2f} m -> climbing")
         fw.expect([r"moving to surface position", r"DIVE ABORTED"], timeout=600)
-        if b"ABORTED" in fw.after:
+        if "ABORTED" in fw.after:
             raise SystemExit("FAIL: climb aborted")
         log("PASS 3b: back near the surface")
         fw.expect("press ENTER to stop", timeout=120)

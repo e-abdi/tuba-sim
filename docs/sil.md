@@ -43,7 +43,9 @@ The firmware sources are untouched: the simulator is a board overlay
   default 12 s stroke: 5 s neutral, 6 s surface float (+1 N), 4 s dive (−1 N).
 * **Pitch:** position 0 = battery fully *aft* (~35° nose-up submerged).
   `+` = forward = nose-down. ~2 s level, 4 s ≈ 37° down, 12 s ≈ 75° down
-  (surface attitude: antenna out). The forward limit switch sits at 12 s.
+  (surface attitude: antenna out). The limit switches sit at 0 and 12 s;
+  the firmware backs off 1 s whenever one is pressed, so "climb pitch 0"
+  actually settles at ~1 s (≈18° nose-up) and the boot position reads 1 s.
 * Because the firmware's mission parameters are unsigned, the boot position
   must be the "least" end of each actuator. On the real glider this means:
   power up with the pump fully in and the battery fully aft, or accept that
@@ -67,6 +69,16 @@ Inconsistency worth knowing in the firmware defaults: `dive_pump_s = 3`,
 manoeuvre drives the pump `+` for a full stroke and calls that "fully OUT,
 maximum buoyancy". The simulator follows the recovery code (`+` = buoyant);
 with the stock defaults a deploy would therefore never sink.
+
+## Gazebo on this machine
+
+The Ubuntu 26.04 upgrade disabled the packages.osrfoundation.org source and
+removed the `gz sim` command/GUI and `python3-gz-transport15`; only the
+headless server (`/usr/libexec/gz/sim10/gz-sim-server`) survived.
+`scripts/run_sim.sh` and `scripts/test_sil.py` fall back to it. To get the
+GUI and the Python mission script back: re-enable
+`/etc/apt/sources.list.d/gazebo-stable.list.disabled` (noble packages still
+install) and `sudo apt install gz-sim10 python3-gz-transport15`.
 
 ## Running it
 

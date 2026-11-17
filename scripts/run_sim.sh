@@ -19,4 +19,17 @@ echo "[run_sim] GZ_SIM_RESOURCE_PATH=${GZ_SIM_RESOURCE_PATH}"
 echo "[run_sim] GZ_IP=${GZ_IP}"
 echo "[run_sim] Launching: gz sim -v ${VERBOSITY} ${WORLD}"
 
-exec gz sim -v "${VERBOSITY}" "${WORLD}"
+if gz help 2>/dev/null | grep -q "^  sim:"; then
+    exec gz sim -v "${VERBOSITY}" "${WORLD}"
+fi
+# No `gz sim` command: the gz-sim10 CLI/GUI package is missing (this happens
+# after an Ubuntu release upgrade disables the packages.osrfoundation.org
+# source). Fall back to the headless server if it is still installed.
+SERVER=/usr/libexec/gz/sim10/gz-sim-server
+if [ -x "${SERVER}" ]; then
+    echo "[run_sim] 'gz sim' not available — running the HEADLESS server (${SERVER})."
+    echo "[run_sim] Re-enable the Gazebo apt source and 'sudo apt install gz-sim10' for the GUI."
+    exec "${SERVER}" -s -r -v "${VERBOSITY}" "${WORLD}"
+fi
+echo "[run_sim] Gazebo is not installed (no 'gz sim', no ${SERVER})" >&2
+exit 1
