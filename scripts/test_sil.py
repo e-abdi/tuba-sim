@@ -21,6 +21,7 @@ touches a Gazebo you have open.
 import argparse
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -29,8 +30,8 @@ import time
 import pexpect
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# `gz sim` needs the gz-sim10 CLI package; the headless server binary alone
-# (package gz-sim10-server) is enough for this test.
+# Headless: `gz sim -s` when the gz-sim10-cli package is present, otherwise the
+# bare server binary (package gz-sim10-server) is enough for this test.
 GZ_SERVER = "/usr/libexec/gz/sim10/gz-sim-server"
 FW_DEFAULT = os.path.expanduser("~/zephyrproject/tuba/build_sil/zephyr/zephyr.exe")
 
@@ -72,7 +73,7 @@ def main():
     try:
         if not args.attach:
             gz_log = open(os.path.join(args.out, "gz.log"), "w")
-            gz_cmd = [GZ_SERVER] if os.path.exists(GZ_SERVER) else ["gz", "sim"]
+            gz_cmd = ["gz", "sim"] if shutil.which("gz") else [GZ_SERVER]
             gz = subprocess.Popen(gz_cmd + ["-s", "-r", "-v", "1", os.path.join(ROOT, "worlds/tuba_ocean.sdf")],
                                   env=env, stdout=gz_log, stderr=subprocess.STDOUT, cwd=ROOT)
             procs.append(gz)

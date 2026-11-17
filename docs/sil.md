@@ -70,15 +70,32 @@ manoeuvre drives the pump `+` for a full stroke and calls that "fully OUT,
 maximum buoyancy". The simulator follows the recovery code (`+` = buoyant);
 with the stock defaults a deploy would therefore never sink.
 
-## Gazebo on this machine
+## Installing Gazebo on Ubuntu 26.04
 
-The Ubuntu 26.04 upgrade disabled the packages.osrfoundation.org source and
-removed the `gz sim` command/GUI and `python3-gz-transport15`; only the
-headless server (`/usr/libexec/gz/sim10/gz-sim-server`) survived.
-`scripts/run_sim.sh` and `scripts/test_sil.py` fall back to it. To get the
-GUI and the Python mission script back: re-enable
-`/etc/apt/sources.list.d/gazebo-stable.list.disabled` (noble packages still
-install) and `sudo apt install gz-sim10 python3-gz-transport15`.
+OSRF publishes Gazebo Jetty (gz-sim 10.6) for Ubuntu 26.04 "resolute". A
+release upgrade from 24.04 disables the old one-line apt source, which removes
+`gz sim` and the GUI and leaves only the headless server. Recreate the source in
+the deb822 format and reinstall:
+
+```bash
+sudo tee /etc/apt/sources.list.d/gazebo-stable.sources >/dev/null <<'EOT'
+Types: deb
+URIs: http://packages.osrfoundation.org/gazebo/ubuntu-stable
+Suites: resolute
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+EOT
+sudo apt update
+sudo apt install gz-sim10-cli libgz-sim10-gui libgz-sim10-plugins-gui \
+                 python3-gz-transport15 python3-gz-msgs12
+bash scripts/build_bridge.sh        # relink the bridge against the new libraries
+```
+
+(`gz-jetty` installs the whole suite including dev headers.) The resolute
+Python bindings import as `gz.transport` / `gz.msgs`, without the version
+suffix. If `gz sim` is missing anyway, `scripts/run_sim.sh` and
+`scripts/test_sil.py` fall back to `/usr/libexec/gz/sim10/gz-sim-server`.
 
 ## Running it
 
@@ -108,7 +125,7 @@ dead-reckoned positions at 20 Hz.
 ### Automated check
 
 ```bash
-python3 scripts/test_sil.py              # headless gz + bridge + firmware, ~6 min
+python3 scripts/test_sil.py              # headless gz + bridge + firmware, ~3 min
 python3 scripts/test_sil.py --no-mission # sensors and actuators only
 ```
 

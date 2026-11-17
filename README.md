@@ -14,9 +14,9 @@ Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.i
 
 | Tool | Version |
 |------|---------|
-| gz-sim | 10.5.0 |
-| Python | 3.10+ |
-| gz Python bindings | `python3-gz-transport15` (mission script; not needed for the SIL bridge) |
+| gz-sim | 10.6 (Gazebo Jetty) |
+| Python | 3.10+ (3.14 on Ubuntu 26.04) |
+| gz Python bindings | `python3-gz-transport15`, `python3-gz-msgs12` (mission script only; the SIL bridge is C++) |
 | libgz-transport15-dev, libgz-msgs12-dev | SIL bridge |
 | Zephyr workspace + SDK, `west` | firmware SIL build (Phase 4) |
 | python3-pexpect | `scripts/test_sil.py` |
@@ -122,7 +122,7 @@ bash scripts/run_sim.sh                      # terminal 1: Gazebo, press Play
 bash scripts/run_sil.sh                      # terminal 2: bridge
 ~/zephyrproject/tuba/sil_run.sh              # terminal 3: glider console (ENTER -> menu)
 
-python3 scripts/test_sil.py                  # headless end-to-end check (~6 min)
+python3 scripts/test_sil.py                  # headless end-to-end check (~3 min)
 ```
 
 ## Physics Tuning
