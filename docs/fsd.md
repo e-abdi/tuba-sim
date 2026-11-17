@@ -2,6 +2,19 @@
 
 Version 1.0 | Gazebo gz-sim 10.2.0 | Standalone (no ROS 2)
 
+> **Status (November 2026): historical.** This is the original design
+> specification, written before the first simulation run. The project has since
+> moved on:
+>
+> * The world spawns `my_glider_v2` (Fusion CAD export), not the cylinder
+>   placeholder `tuba_glider` described in sections 4–6. Topics, volumes and
+>   joint ranges for the current model are in the [README](../README.md).
+> * The seafloor is the local coral mesh, not `OceanFloorShipwreck`.
+> * Section 7 (Python bridge, QEMU, a skeleton Zephyr state machine) was never
+>   used as specified. The real firmware now runs as a `native_sim` process
+>   against a C++ bridge; the design that was built is in [sil.md](sil.md).
+> * Gazebo is 10.6 (Jetty).
+
 ---
 
 ## 1. Purpose
@@ -164,6 +177,8 @@ Tuning file: `config/physics_params.yaml`
 ---
 
 ## 7. Zephyr SIL Integration
+
+> Superseded by [sil.md](sil.md). Kept for the record.
 
 ### 7.1 UDP Protocol
 

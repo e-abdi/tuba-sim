@@ -1,6 +1,6 @@
 # TUBA Glider Simulation
 
-Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.io/project/196850-tuba-the-open-source-glider), including Zephyr RTOS SIL (software-in-the-loop) integration.
+Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.io/project/196850-tuba-the-open-source-glider), with the real Zephyr [tuba-firmware](https://github.com/e-abdi/tuba-firmware) running against it in software-in-the-loop (SIL).
 
 ![TUBA Simulation](pics/tuba-sim.png)
 
@@ -18,21 +18,25 @@ Gazebo simulation of the [TUBA open-source underwater glider](https://hackaday.i
 | Python | 3.10+ (3.14 on Ubuntu 26.04) |
 | gz Python bindings | `python3-gz-transport15`, `python3-gz-msgs12` (mission script only; the SIL bridge is C++) |
 | libgz-transport15-dev, libgz-msgs12-dev | SIL bridge |
-| Zephyr workspace + SDK, `west` | firmware SIL build (Phase 4) |
+| Zephyr workspace + SDK, `west` | firmware SIL build |
 | python3-pexpect | `scripts/test_sil.py` |
 
 ## Project Layout
 
 ```
-worlds/            Ocean world SDF
-models/tuba_glider/ Glider model (SDF + config)
-config/            Physics tuning parameters
-scripts/           Launch and test scripts
-bridge/            Gazebo ↔ firmware bridge (C++, gz-transport + UDP)
-docs/              FSD, SIL notes (docs/sil.md)
+worlds/               Ocean world SDF (spawns my_glider_v2)
+models/my_glider_v2/  The glider: Fusion CAD export + buoyancy engine, hydrodynamics, battery joint
+models/tuba_glider/   Early cylinder-placeholder model (not spawned; kept for reference)
+models/seafloor.zip   Coral seafloor mesh (unzip before launching, see above)
+config/sil.cfg        SIL bridge settings (strokes, sensor placement, ports)
+config/physics_params.yaml  Coefficient notes for the placeholder model
+scripts/              Launch, mission and test scripts
+bridge/               Gazebo ↔ firmware bridge (C++, gz-transport + UDP)
+docs/sil.md           Real firmware in the loop: conventions, parameters, install notes
+docs/fsd.md           Original design specification (partly superseded, see its header)
 ```
 
-## Phase 1 & 2 — Run the Simulation
+## Run the Simulation
 
 ```bash
 # Launch Gazebo with the ocean world + glider
@@ -58,7 +62,7 @@ Each cycle: float at the surface (~70° nose-down, antenna out) → dive steeply
 → pitch over to ~75° nose-down and rise tail-first until the antenna is out again.
 Depths, pitch, volumes and gains are all command-line options (`--help`).
 
-## Phase 2 — Manual Control
+## Manual Control
 
 The world spawns `my_glider_v2`. Bladder volume range is 0–1.2 L (0.0005 = neutral).
 Don't run manual commands while `glider_mission.py` is running; it overrides them.
@@ -85,29 +89,15 @@ gz topic -e -t /model/my_glider_v2/buoyancy_engine/current_volume
 gz topic -e -t /world/tuba_ocean/model/my_glider_v2/joint_state
 ```
 
-## Phase 3 — Buoyancy Smoke Test
+## Legacy scripts
 
-```bash
-bash scripts/test_buoyancy.sh
-```
+`scripts/test_buoyancy.sh`, `scripts/test_glider_cycle.sh` and
+`scripts/plot_trajectory.py` are from the first phase of the project and target
+the placeholder model `tuba_glider`, which the world no longer spawns. Use
+`glider_mission.py` (above) or the SIL loop (below) instead; `glider_mission.py` and
+`run_sil.sh` both write a CSV trajectory with `--log`.
 
-## Phase 3 — Full Glide Cycle Test
-
-```bash
-# Two cycles, dive to 30 m (default)
-bash scripts/test_glider_cycle.sh
-
-# Custom: 3 cycles, dive to 20 m
-bash scripts/test_glider_cycle.sh 20 3
-```
-
-Plot the logged trajectory:
-
-```bash
-python3 scripts/plot_trajectory.py --input /tmp/pose_log.txt
-```
-
-## Phase 4 — Real firmware in the loop (SIL)
+## Real firmware in the loop (SIL)
 
 The [tuba-firmware](https://github.com/e-abdi/tuba-firmware) builds as a Linux
 process and flies this glider: its menus, parameters and missions are unchanged,
@@ -127,35 +117,22 @@ python3 scripts/test_sil.py                  # headless end-to-end check (~3 min
 
 ## Physics Tuning
 
-Edit `config/physics_params.yaml` and manually copy the values into `models/tuba_glider/model.sdf` plugin sections. Restart gz sim after each change.
+All physics lives in the plugin blocks at the end of `models/my_glider_v2/model.sdf`
+(restart gz sim after each change):
 
-Key coefficients to tune:
-- `xUabsU` — reduce for less axial drag (faster forward speed)
-- `cla` (LiftDrag) — increase for more wing lift at low AoA
-- `neutral_volume` — adjust so glider is exactly neutral at desired depth
+- `BuoyancyEngine` — bladder range 0–1.2 L, `neutral_volume` 0.5 L
+- `Hydrodynamics` — Fossen added mass and drag, applied at `hydro_link` (hull
+  centre). `xUabsU` sets axial drag and so the glide speed.
+- `hull_seg_*` collision cylinders — the displaced volume. The hull is cut into
+  ten short segments so graded buoyancy behaves at the surface.
+- Battery joint limits −0.05…0.14 m — the pitch authority.
 
-## Integrating the Real Glider Shell
-
-Replace the cylinder placeholder in `models/tuba_glider/model.sdf` with your actual mesh:
-
-```xml
-<visual name="hull_visual">
-  <geometry>
-    <mesh><uri>model://tuba_glider/meshes/hull.dae</uri></mesh>
-  </geometry>
-</visual>
-<collision name="hull_collision">
-  <geometry>
-    <mesh><uri>model://tuba_glider/meshes/hull_collision.dae</uri></mesh>
-  </geometry>
-</collision>
-```
-
-Place mesh files in `models/tuba_glider/meshes/`. Update the inertia and mass values to match the real glider.
+If you change the bladder range or the battery travel, update `config/sil.cfg`
+to match, otherwise the firmware's stroke seconds map to the wrong positions.
 
 ## Known Issues / Open Items
 
-1. Fuel model URLs (`Coast Water`, `OceanFloorShipwreck`) must be verified with `gz fuel download` before first run.
-2. The hull geometry uses a cylinder placeholder — replace with real CAD mesh for accurate drag and buoyancy volume.
-3. Hydrodynamics coefficients are analytical estimates — expect 1–2 tuning iterations.
-4. The Gazebo model has no roll mass: the firmware's heading hold moves a tracked-only roll position.
+1. Hydrodynamic coefficients are analytical estimates, not yet fitted to tank or sea data.
+2. The battery travel (−0.05…0.14 m) is estimated from the CAD, not measured on the hardware.
+3. The Gazebo model has no roll mass: the firmware's heading hold moves a tracked-only roll position.
+4. Hardware-in-the-loop (ESP32 over WiFi against the same bridge) is designed for but not built, see [docs/sil.md](docs/sil.md).
